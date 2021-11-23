@@ -1,0 +1,4 @@
+sqlalchemy
+typing_extensions
+pyyaml
+mysqlclient

@@ -1,0 +1,74 @@
+#! /usr/bin/env python3
+import argparse
+import json
+
+import yaml
+
+from data.data import SDVXDBMusicData
+from data.engine import Engine
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='Convert Asyphyxia data to MySQL.')
+    parser.add_argument(
+        "-d",
+        "--data",
+        help="The path to the asyphyxia gaming data",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "-r",
+        "--refid",
+        help="The refid asyphyxia generated for one card.You can find it on the asyphyxia dashboard or in the savedata.db.",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "--card",
+        help="Your card ID.",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="The configuration of the target MySQL server.",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "-p",
+        "--pcbid",
+        help="Your machine's pcbid.",
+        required=True,
+        type=str,
+    )
+
+    args = parser.parse_args()
+    refid = args.refid
+    datas = []
+    with open(args.data, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            json_data = json.loads(line)
+            if "collection" not in json_data or json_data['collection'] != "music":
+                continue
+            if "__refid" not in json_data or json_data['__refid'] != refid:
+                continue
+            try:
+                d = SDVXDBMusicData()
+                d.from_asyphxia_data(json_data)
+                datas.append(d)
+            except Exception as e:
+                print("Parse asyphixa data failed. Error information:", repr(e))
+                exit(1)
+
+    config = yaml.safe_load(open(args.config))
+    mysql = Engine(config)
+    mysql.sync_to_mysql(args.pcbid, args.card, datas)
+
+
+if __name__ == "__main__":
+    main()
